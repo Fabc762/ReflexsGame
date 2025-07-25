@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON BEATS ⚡</title>
+    <style>
+        /* Importa la fuente 'Orbitron' de Google Fonts. */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        /* Esto quita los márgenes y rellenos por defecto de todos los elementos. */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Estilos para el cuerpo de la página. */
+        body {
+            font-family: 'Orbitron', monospace; /* La fuente principal del juego. */
+            background: #0a0a0a; /* Fondo oscuro. */
+            overflow: hidden; /* Evita las barras de desplazamiento. */
+            cursor: crosshair; /* Cambia el cursor. */
+            user-select: none; /* Impide seleccionar texto. */
+        }
+        
+        /* Contenedor principal del juego. */
+        #gameContainer {
+            width: 100vw; /* Ocupa todo el ancho de la ventana. */
+            height: 100vh; /* Ocupa todo el alto de la ventana. */
+            position: relative; /* Para posicionar elementos dentro. */
+            background: radial-gradient(circle at 50% 50%, #1a0033, #000011); /* Un gradiente de fondo. */
+            animation: backgroundPulse 4s ease-in-out infinite alternate; /* Animación del fondo. */
+        }
+        
+        /* Animación para el gradiente de fondo. */
+        @keyframes backgroundPulse {
+            0% { background: radial-gradient(circle at 30% 70%, #1a0033, #000011); }
+            50% { background: radial-gradient(circle at 70% 30%, #001a33, #110000); }
+            100% { background: radial-gradient(circle at 50% 50%, #33001a, #001100); }
+        }
+        
+        /* Estilos para el lienzo del juego (canvas). */
+        #gameCanvas {
+            position: absolute; /* Posicionamiento absoluto. */
+            top: 0;
+            left: 0;
+            background: transparent; /* Fondo transparente. */
+        }
+        
+        /* Interfaz de usuario (UI) para puntuación y combo. */
+        .ui {
+            position: absolute; /* Posicionamiento absoluto. */
+            top: 20px;
+            left: 20px;
+            z-index: 100; /* Asegura que esté por encima. */
+            color: #00ffff; /* Color cian. */
+            font-weight: 700; /* Texto en negrita. */
+            text-shadow: 0 0 20px #00ffff; /* Sombra para efecto neón. */
+        }
+
+        /* Muestra el ID de usuario. */
+        #userIdDisplay {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 10px;
+            word-break: break-all; /* Permite que el texto se rompa. */
+            max-width: 200px; /* Limita el ancho. */
+        }
+        
+        /* Estilo para la puntuación. */
+        #score {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        /* Estilo para el combo. */
+        #combo {
+            font-size: 1.2rem;
+            color: #ff00ff; /* Color magenta. */
+            text-shadow: 0 0 15px #ff00ff; /* Sombra para efecto neón. */
+        }
+        
+        /* Pantalla de inicio del juego. */
+        #startScreen {
+            position: absolute; /* Posicionamiento absoluto. */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9); /* Fondo semitransparente oscuro. */
+            display: flex; /* Usa flexbox para centrar contenido. */
+            flex-direction: column; /* Elementos en columna. */
+            justify-content: center; /* Centrado vertical. */
+            align-items: center; /* Centrado horizontal. */
+            z-index: 200; /* Por encima de la UI del juego. */
+            animation: neonFlicker 2s ease-in-out infinite alternate; /* Animación de parpadeo. */
+        }
+        
+        /* Animación de parpadeo para la pantalla de inicio. */
+        @keyframes neonFlicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* Título del juego en la pantalla de inicio. */
+        #title {
+            font-size: 4rem;
+            font-weight: 900; /* Extra negrita. */
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00); /* Gradiente de colores. */
+            -webkit-background-clip: text; /* Recorta el fondo al texto. */
+            -webkit-text-fill-color: transparent; /* Hace el texto transparente. */
+            background-clip: text;
+            margin-bottom: 20px;
+            animation: titleGlow 3s ease-in-out infinite alternate; /* Animación de brillo del título. */
+        }
+        
+        /* Animación de brillo para el título. */
+        @keyframes titleGlow {
+            0% { filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.8)); }
+            100% { filter: drop-shadow(0 0 40px rgba(255, 0, 255, 0.8)); }
+        }
+        
+        /* Subtítulo en la pantalla de inicio. */
+        #subtitle {
+            font-size: 1.2rem;
+            color: #888; /* Color gris. */
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        /* Estilos para los botones del juego. */
+        .game-button {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-family: 'Orbitron', monospace;
+            background: linear-gradient(45deg, #00ffff, #ff00ff); /* Gradiente de fondo. */
+            border: none;
+            border-radius: 50px; /* Bordes redondeados. */
+            color: #000; /* Color de texto oscuro. */
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease; /* Transición suave para efectos. */
+            animation: buttonPulse 2s ease-in-out infinite alternate; /* Animación de pulso. */
+            margin: 10px; /* Margen para separar botones. */
+        }
+        
+        /* Animación de pulso para el botón. */
+        @keyframes buttonPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+            50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(255, 0, 255, 0.8); }
+        }
+        
+        /* Efecto hover para el botón de inicio. */
+        .game-button:hover {
+            transform: scale(1.1); /* Escala ligeramente el botón. */
+            box-shadow: 0 0 50px rgba(255, 255, 0, 1); /* Sombra amarilla brillante. */
+        }
+        
+        /* Partículas generadas al golpear un círculo. */
+        .particle {
+            position: absolute;
+            pointer-events: none; /* No interactuable con el ratón. */
+            border-radius: 50%; /* Forma circular. */
+            animation: particleExplode 1s ease-out forwards; /* Animación de explosión. */
+        }
+        
+        /* Animación de explosión para las partículas. */
+        @keyframes particleExplode {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* Cursor personalizado. */
+        .custom-cursor {
+            position: fixed; /* Fijo en la pantalla. */
+            width: 30px;
+            height: 30px;
+            border: 2px solid #00ffff; /* Borde cian. */
+            border-radius: 50%;
+            pointer-events: none; /* No interactuable. */
+            z-index: 9999; /* Siempre en la parte superior. */
+            mix-blend-mode: difference; /* Modo de mezcla para un efecto visual. */
+            transition: all 0.1s ease; /* Transición suave. */
+            box-shadow: 
+                0 0 20px #00ffff,
+                inset 0 0 20px rgba(0, 255, 255, 0.2); /* Sombra exterior e interior. */
+            animation: cursorPulse 2s ease-in-out infinite; /* Animación de pulso. */
+        }
+        
+        /* Animación de pulso para el cursor. */
+        @keyframes cursorPulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            50% { 
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        /* Estado del cursor cuando se hace clic. */
+        .custom-cursor.clicking {
+            transform: scale(1.5); /* Se agranda. */
+            border-color: #ff00ff; /* Cambia a magenta. */
+            box-shadow: 
+                0 0 30px #ff00ff,
+                inset 0 0 30px rgba(255, 0, 255, 0.3);
+        }
+        
+        /* Estado del cursor cuando se golpea un círculo. */
+        .custom-cursor.hit {
+            transform: scale(2); /* Se agranda más. */
+            border-color: #ffff00; /* Cambia a amarillo. */
+            box-shadow: 
+                0 0 40px #ffff00,
+                inset 0 0 40px rgba(255, 255, 0, 0.4);
+        }
+        
+        /* Círculos de ritmo. */
+        .beat-circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid; /* Borde del círculo. */
+            cursor: pointer; /* Indica que es interactuable. */
+            animation: beatPulse 2s ease-in-out infinite; /* Animación de pulso. */
+            transition: all 0.1s ease; /* Transición suave. */
+        }
+        
+        /* Animación de pulso para los círculos de ritmo. */
+        @keyframes beatPulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+        
+        /* Efecto hover para los círculos de ritmo. */
+        .beat-circle:hover {
+            transform: scale(1.15); /* Se agranda ligeramente. */
+            filter: brightness(1.5); /* Aumenta el brillo. */
+            box-shadow: 0 0 30px currentColor; /* Sombra basada en el color actual. */
+        }
+        
+        /* Efecto de flash de pantalla. */
+        .screen-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 150;
+        }
+        
+        /* Animación para el flash de pantalla. */
+        @keyframes screenFlash {
+            0% { background: rgba(255, 255, 255, 0.3); } /* Blanco semitransparente. */
+            100% { background: transparent; } /* Transparente. */
+        }
+        
+        /* Instrucciones en la pantalla de inicio. */
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%); /* Centrado horizontal. */
+            color: #666; /* Color gris. */
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        /* Pantalla de autenticación. */
+        #authScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex; /* Se muestra por defecto */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300; /* Por encima de todo lo demás. */
+        }
+        
+        /* Contenedor de la pantalla de autenticación. */
+        .auth-container {
+            background: rgba(0, 20, 40, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        /* Título de la pantalla de autenticación. */
+        .auth-title {
+            font-size: 2rem;
+            color: #00ffff;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #00ffff;
+        }
+        
+        /* Campos de entrada en la pantalla de autenticación. */
+        .auth-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            font-family: 'Orbitron', monospace;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        /* Estilo del campo de entrada cuando está enfocado. */
+        .auth-input:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        /* Botones en la pantalla de autenticación. */
+        .auth-button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', monospace;
+            background: linear-gradient(45deg, #00ffff, #ff00ff);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+        
+        /* Efecto hover para los botones de autenticación. */
+        .auth-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 25px rgba(255, 0, 255, 0.8);
+        }
+
+        /* Estilo específico para el botón de Google Sign-In */
+        #googleSignInButton {
+            background: #4285F4; /* Color de Google Blue */
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px; /* Espacio entre el icono y el texto */
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.5);
+        }
+
+        #googleSignInButton:hover {
+            background: #357ae8; /* Un tono más oscuro en hover */
+            box-shadow: 0 0 25px rgba(66, 133, 244, 0.8);
+        }
+
+        #googleSignInButton .google-icon {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+        }
+
+        /* Pantalla de Game Over. */
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none; /* Oculto por defecto. */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 280; /* Entre el juego y la pantalla de autenticación. */
+            color: #fff;
+            text-align: center;
+        }
+
+        /* Título de Game Over. */
+        .game-over-title {
+            font-size: 3.5rem;
+            color: #ff3366;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px #ff3366;
+            animation: neonFlicker 1.5s ease-in-out infinite alternate;
+        }
+
+        /* Puntuación final en la pantalla de Game Over. */
+        .final-score {
+            font-size: 2.5rem;
+            color: #00ffff;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #00ffff;
+        }
+
+        /* Pantalla de clasificación. */
+        #leaderboardScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none; /* Oculto por defecto. */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 250; /* Por encima del juego, pero debajo de la pantalla de autenticación. */
+            color: #fff;
+            padding: 20px;
+            overflow-y: auto; /* Permite desplazamiento si la tabla es larga. */
+        }
+
+        /* Contenedor de la tabla de clasificación. */
+        .leaderboard-container {
+            background: rgba(0, 20, 40, 0.8);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 40px rgba(255, 0, 255, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 95%;
+        }
+
+        /* Título de la tabla de clasificación. */
+        .leaderboard-title {
+            font-size: 2.5rem;
+            color: #ff00ff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #ff00ff;
+        }
+
+        /* Tabla de clasificación. */
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            color: #00ffff;
+        }
+
+        /* Celdas y encabezados de la tabla de clasificación. */
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            text-align: left;
+        }
+
+        /* Encabezados de la tabla de clasificación. */
+        .leaderboard-table th {
+            background: rgba(0, 255, 255, 0.1);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Filas pares de la tabla de clasificación. */
+        .leaderboard-table tr:nth-child(even) {
+            background: rgba(255, 0, 255, 0.05);
+        }
+
+        /* Efecto hover para las filas de la tabla de clasificación. */
+        .leaderboard-table tr:hover {
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        /* Botón para cerrar la tabla de clasificación. */
+        .leaderboard-close-button {
+            margin-top: 30px;
+            padding: 10px 25px;
+            font-size: 1.1rem;
+            font-family: 'Orbitron', monospace;
+            background: linear-gradient(45deg, #ff00ff, #ffff00);
+            border: none;
+            border-radius: 30px;
+            color: #000;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+        }
+
+        /* Efecto hover para el botón de cerrar clasificación. */
+        .leaderboard-close-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 25px rgba(255, 255, 0, 0.8);
+        }
+        
+        /* Media query para pantallas más pequeñas (diseño responsivo). */
+        @media (max-width: 768px) {
+            #title { font-size: 2.5rem; } /* Reduce el tamaño del título. */
+            #score { font-size: 1.5rem; } /* Reduce el tamaño de la puntuación. */
+            .game-button { font-size: 1.2rem; padding: 12px 30px; } /* Ajusta el botón. */
+            .auth-title { font-size: 1.5rem; }
+            .auth-input { padding: 10px; font-size: 0.9rem; }
+            .auth-button { padding: 10px; font-size: 1rem; }
+            .leaderboard-title { font-size: 1.8rem; }
+            .leaderboard-table th, .leaderboard-table td { padding: 8px; font-size: 0.9rem; }
+            .game-over-title { font-size: 2.5rem; }
+            .final-score { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Contenedor principal del juego. -->
+    <div id="gameContainer">
+        <!-- El área donde se dibuja el juego. -->
+        <canvas id="gameCanvas"></canvas>
+        <!-- El cursor que se ve en el juego. -->
+        <div class="custom-cursor" id="customCursor"></div>
+        
+        <!-- La interfaz de usuario (puntuación y combo). -->
+        <div class="ui">
+            <div id="score">SCORE: 0</div>
+            <div id="combo">COMBO: x1</div>
+            <div id="userIdDisplay">ID de Usuario: Cargando...</div>
+        </div>
+        
+        <!-- La pantalla que aparece al inicio del juego. -->
+        <div id="startScreen" style="display: none;"> <!-- Oculto por defecto -->
+            <h1 id="title">NEON BEATS</h1>
+            <p id="subtitle">Click the beats • Feel the rhythm • Create magic</p>
+            <button id="startButton" class="game-button">ENTRAR AL JUEGO</button>
+            <button id="viewLeaderboardButton" class="game-button">VER CLASIFICACIÓN</button>
+            <p id="instructions">Click on the glowing circles as they appear to the beat!</p>
+        </div>
+
+        <!-- La pantalla para poner tu nombre de usuario. -->
+        <div id="authScreen">
+            <div class="auth-container">
+                <h2 class="auth-title">¡Bienvenido a Neon Beats!</h2>
+                <!-- Mensaje de carga/estado de la conexión (oculto por defecto) -->
+                <p id="authLoadingMessage" style="color: #00ffff; margin-bottom: 10px; display: none;">Conectando a Firebase...</p>
+                <p style="color: #ccc; margin-bottom: 20px;">Inicia sesión o introduce tu nombre de usuario:</p>
+                
+                <!-- Botón de Google Sign-In -->
+                <button id="googleSignInButton" class="auth-button">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon" class="google-icon">
+                    Iniciar sesión con Google
+                </button>
+
+                <div style="margin: 20px 0; color: #888;">O</div>
+
+                <input type="text" id="usernameInput" class="auth-input" placeholder="Tu nombre de usuario" maxlength="15">
+                <button id="enterGameButton" class="auth-button">ENTRAR AL JUEGO (Anónimo)</button>
+                <p id="authMessage" style="color: #ff0000; margin-top: 10px;"></p>
+            </div>
+        </div>
+
+        <!-- La pantalla que aparece cuando pierdes. -->
+        <div id="gameOverScreen">
+            <h2 class="game-over-title">GAME OVER</h2>
+            <p class="final-score">Puntuación Final: <span id="finalScore">0</span></p>
+            <button id="playAgainButton" class="game-button">JUGAR DE NUEVO</button>
+            <button id="backToMenuButton" class="game-button">MENÚ PRINCIPAL</button>
+        </div>
+
+        <!-- La pantalla donde ves las mejores puntuaciones. -->
+        <div id="leaderboardScreen">
+            <div class="leaderboard-container">
+                <h2 class="leaderboard-title">Tabla de Clasificación</h2>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Posición</th>
+                            <th>Usuario</th>
+                            <th>Puntuación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Las puntuaciones se cargarán aquí. -->
+                        <tr><td colspan="3">Cargando clasificación...</td></tr>
+                    </tbody>
+                </table>
+                <button id="closeLeaderboardButton" class="leaderboard-close-button">CERRAR</button>
+            </div>
+        </div>
+        
+        <!-- Un elemento para el efecto de flash de pantalla. -->
+        <div class="screen-flash" id="screenFlash"></div>
+    </div>
+
+    <!-- SDKs de Firebase (para guardar y cargar puntuaciones). -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ====================================================================
+        // TU CÓDIGO firebaseConfig DE LA CONSOLA DE FIREBASE ESTÁ AQUÍ
+        // ====================================================================
+        const appId = "neonbeatsgame-c3c1d"; // Usa el projectId de tu firebaseConfig como appId
+        const firebaseConfig = {
+          apiKey: "AIzaSyBVPNIsjeYqaGWiWngJRR-ZBGJ9JWI40yg",
+          authDomain: "neonbeatsgame-c3c1d.firebaseapp.com",
+          projectId: "neonbeatsgame-c3c1d",
+          storageBucket: "neonbeatsgame-c3c1d.firebasestorage.app",
+          messagingSenderId: "381267123393",
+          appId: "1:381267123393:web:8058ce8b264a6ba91fc840",
+          measurementId: "G-KVXTMB6NNN"
+        };
+
+        let app;
+        let db;
+        let auth;
+        let userId;
+        let username = "Anónimo"; // Nombre de usuario por defecto.
+        let firebaseInitialized = false; // Bandera para asegurar una única inicialización de Firebase
+
+        /**
+         * Clase principal del juego NeonBeats.
+         * Maneja cómo funciona el juego, lo que se ve y lo que hace el jugador.
+         */
+        class NeonBeats {
+            /**
+             * Constructor de la clase NeonBeats.
+             * Prepara todo lo que el juego necesita al principio.
+             */
+            constructor() {
+                // Obtiene los elementos de la página.
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d'); // Para dibujar en el canvas.
+                this.gameContainer = document.getElementById('gameContainer');
+                this.startScreen = document.getElementById('startScreen');
+                this.authScreen = document.getElementById('authScreen');
+                this.gameOverScreen = document.getElementById('gameOverScreen'); // La pantalla de Game Over.
+                this.leaderboardScreen = document.getElementById('leaderboardScreen');
+                this.screenFlash = document.getElementById('screenFlash');
+                this.customCursor = document.getElementById('customCursor');
+                this.usernameInput = document.getElementById('usernameInput');
+                this.enterGameButton = document.getElementById('enterGameButton');
+                this.googleSignInButton = document.getElementById('googleSignInButton'); // Nuevo botón de Google
+                this.authMessage = document.getElementById('authMessage');
+                this.authLoadingMessage = document.getElementById('authLoadingMessage'); // Elemento para el mensaje de carga
+                this.userIdDisplay = document.getElementById('userIdDisplay');
+                this.viewLeaderboardButton = document.getElementById('viewLeaderboardButton');
+                this.closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
+                this.leaderboardBody = document.getElementById('leaderboardBody');
+                this.finalScoreDisplay = document.getElementById('finalScore');
+                this.playAgainButton = document.getElementById('playAgainButton');
+                this.backToMenuButton = document.getElementById('backToMenuButton');
+                
+                // Variables que controlan el estado del juego.
+                this.score = 0; // Puntuación actual.
+                this.combo = 1; // Multiplicador de combo.
+                this.maxCombo = 0; // Combo más alto de la partida actual.
+                this.beatCircles = []; // Lista de círculos que aparecen.
+                this.particles = []; // Lista de partículas que explotan.
+                this.gameStarted = false; // Si el juego está en marcha o no.
+                this.bpm = 120; // Ritmo de los beats por minuto.
+                this.beatInterval = 60000 / this.bpm; // Tiempo entre cada beat en milisegundos.
+                this.lastBeatTime = 0; // Cuándo apareció el último beat.
+                this.audioContext = null; // Para los sonidos del juego.
+                
+                // Colores que pueden tener los círculos.
+                this.colors = ['#00ffff', '#ff00ff', '#ffff00', '#00ff00', '#ff3366'];
+                this.currentColorIndex = 0; // El color que toca ahora.
+                this.mouseX = 0; // Posición X del ratón.
+                this.mouseY = 0; // Posición Y del ratón.
+
+                this.isAuthReady = false; // Para saber si Firebase está listo.
+                
+                // Configuración inicial del juego.
+                this.setupCanvas();
+                this.setupAudio();
+                this.bindEvents();
+                this.animate(); // Empieza el bucle de animación.
+            }
+            
+            /**
+             * Inicializa Firebase y maneja el inicio de sesión.
+             * Se llama solo una vez, al primer intento de inicio de sesión.
+             */
+            async initFirebaseOnce() {
+                if (firebaseInitialized) return; // Evita múltiples inicializaciones
+                firebaseInitialized = true;
+
+                try {
+                    // Verifica si firebaseConfig está correctamente configurado
+                    if (!firebaseConfig || !firebaseConfig.apiKey) {
+                        console.error("Firebase config is missing or incomplete.");
+                        this.authMessage.textContent = "Error: Configuración de Firebase no encontrada.";
+                        this.authScreen.style.display = 'flex';
+                        return;
+                    }
+
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Oculta el mensaje de carga si estaba visible
+                    this.authLoadingMessage.style.display = 'none';
+
+                    // Escucha si el usuario inicia o cierra sesión.
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            this.userIdDisplay.textContent = `ID de Usuario: ${userId}`;
+                            console.log("Usuario autenticado:", userId);
+
+                            // Intenta cargar el nombre de usuario guardado o usar el displayName de Google
+                            let loadedUsername = null;
+                            const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, "userProfile");
+                            const userDocSnap = await getDoc(userProfileDocRef);
+                            if (userDocSnap.exists()) {
+                                loadedUsername = userDocSnap.data().username;
+                            }
+
+                            // Si el usuario se autenticó con Google y tiene un displayName, úsalo
+                            if (user.providerData && user.providerData.length > 0 && user.providerData[0].providerId === 'google.com' && user.displayName) {
+                                username = user.displayName;
+                                // Guarda el displayName de Google en el perfil si no hay uno o es diferente
+                                if (!loadedUsername || loadedUsername !== username) {
+                                    await setDoc(userProfileDocRef, { username: username }, { merge: true });
+                                    console.log("Nombre de usuario de Google guardado:", username);
+                                }
+                            } else if (loadedUsername) {
+                                username = loadedUsername;
+                            } else {
+                                // Si no hay nombre de Google ni perfil guardado, se mantiene "Anónimo" o se pide uno
+                                username = "Anónimo";
+                            }
+                            this.usernameInput.value = username;
+                            console.log("Nombre de usuario final:", username);
+                            
+                            this.isAuthReady = true; // La conexión de Firebase está lista
+                            
+                            // Oculta la pantalla de autenticación y muestra la de inicio del juego
+                            this.authScreen.style.display = 'none';
+                            this.startScreen.style.display = 'flex';
+                            this.loadLeaderboard(); // Carga la tabla de clasificación.
+                        } else {
+                            // Si el usuario cierra sesión o no está autenticado, asegura que la pantalla de autenticación esté visible
+                            this.isAuthReady = false; // Firebase no está listo para operaciones sin un usuario
+                            this.authScreen.style.display = 'flex';
+                            this.startScreen.style.display = 'none';
+                            // Habilita los botones y campo de usuario si no hay un usuario autenticado
+                            this.usernameInput.disabled = false;
+                            this.enterGameButton.disabled = false;
+                            this.googleSignInButton.disabled = false;
+                            this.authLoadingMessage.style.display = 'none'; // Asegura que el mensaje de carga esté oculto
+                        }
+                    });
+                } catch (error) {
+                    console.error("Error al iniciar Firebase o sesión:", error);
+                    this.authMessage.textContent = "Error al conectar. Intenta recargar.";
+                    this.authScreen.style.display = 'flex';
+                    this.usernameInput.disabled = true; // Mantiene deshabilitado en caso de error
+                    this.enterGameButton.disabled = true; // Mantiene deshabilitado en caso de error
+                    this.googleSignInButton.disabled = true; // Mantiene deshabilitado en caso de error
+                    this.authLoadingMessage.style.display = 'none'; // Limpia el mensaje de carga
+                }
+            }
+
+            /**
+             * Maneja el inicio de sesión con Google.
+             */
+            async signInWithGoogle() {
+                // Muestra el mensaje de carga y deshabilita los campos mientras se procesa
+                this.authLoadingMessage.textContent = "Iniciando sesión con Google...";
+                this.authLoadingMessage.style.display = 'block';
+                this.usernameInput.disabled = true;
+                this.enterGameButton.disabled = true;
+                this.googleSignInButton.disabled = true;
+
+                try {
+                    await this.initFirebaseOnce(); // Asegura que Firebase esté inicializado
+                    const provider = new GoogleAuthProvider();
+                    const result = await signInWithPopup(auth, provider);
+                    console.log("Inicio de sesión con Google exitoso:", result.user.displayName);
+                    // onAuthStateChanged se encargará de actualizar la UI y el nombre de usuario
+                } catch (error) {
+                    console.error("Error al iniciar sesión con Google:", error);
+                    let errorMessage = "Error al iniciar sesión con Google.";
+                    if (error.code === 'auth/popup-closed-by-user') {
+                        errorMessage = "Inicio de sesión cancelado.";
+                    } else if (error.code === 'auth/cancelled-popup-request') {
+                        errorMessage = "Ya hay una ventana de inicio de sesión abierta.";
+                    } else if (error.code === 'auth/unauthorized-domain') {
+                        errorMessage = "Dominio no autorizado. Añade tu dominio (ej. file:// o localhost) en la consola de Firebase > Authentication > Settings > Authorized domains.";
+                    }
+                    this.authMessage.textContent = errorMessage;
+                    // Habilita los campos de nuevo en caso de error
+                    this.usernameInput.disabled = false;
+                    this.enterGameButton.disabled = false;
+                    this.googleSignInButton.disabled = false;
+                    this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                    setTimeout(() => { this.authMessage.textContent = ""; }, 8000); // Aumenta el tiempo para leer el mensaje
+                }
+            }
+
+            /**
+             * Guarda el nombre de usuario en la base de datos (para usuarios anónimos).
+             */
+            async saveUsername() {
+                // Muestra el mensaje de carga y deshabilita los campos mientras se procesa
+                this.authLoadingMessage.textContent = "Guardando nombre de usuario...";
+                this.authLoadingMessage.style.display = 'block';
+                this.usernameInput.disabled = true;
+                this.enterGameButton.disabled = true;
+                this.googleSignInButton.disabled = true;
+
+                try {
+                    await this.initFirebaseOnce(); // Asegura que Firebase esté inicializado
+                    // Si no hay un usuario autenticado (por ejemplo, si se inicia directamente con anónimo),
+                    // asegúrate de que se autentique anónimamente aquí.
+                    if (!auth.currentUser) {
+                        await signInAnonymously(auth);
+                    }
+
+                    if (!this.isAuthReady || !userId) {
+                        this.authMessage.textContent = "Error: La conexión no está lista.";
+                        // Habilita los campos de nuevo en caso de error
+                        this.usernameInput.disabled = false;
+                        this.enterGameButton.disabled = false;
+                        this.googleSignInButton.disabled = false;
+                        this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                        setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
+                        return;
+                    }
+
+                    const newUsername = this.usernameInput.value.trim();
+                    if (newUsername.length < 3) {
+                        this.authMessage.textContent = "El nombre de usuario debe tener al menos 3 letras.";
+                        // Habilita los campos de nuevo en caso de error
+                        this.usernameInput.disabled = false;
+                        this.enterGameButton.disabled = false;
+                        this.googleSignInButton.disabled = false;
+                        this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                        setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
+                        return;
+                    }
+                    username = newUsername;
+                    
+                    const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, "userProfile");
+                    await setDoc(userDocRef, { username: username }, { merge: true });
+                    console.log("Nombre de usuario guardado:", username);
+                    // onAuthStateChanged se encargará de ocultar la pantalla de autenticación y mostrar la de inicio del juego
+                    this.authMessage.textContent = ""; // Borra mensajes de error.
+                    this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                } catch (error) {
+                    console.error("Error al guardar el nombre de usuario:", error);
+                    this.authMessage.textContent = "Error al guardar el nombre de usuario.";
+                    // Habilita los campos de nuevo en caso de error
+                    this.usernameInput.disabled = false;
+                    this.enterGameButton.disabled = false;
+                    this.googleSignInButton.disabled = false;
+                    this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                    setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
+                }
+            }
+
+            /**
+             * Guarda la puntuación más alta del usuario.
+             */
+            async saveHighScore() {
+                if (!this.isAuthReady || !userId || !username || this.score === 0) {
+                    console.warn("No se pudo guardar la puntuación: conexión no lista, sin nombre o puntuación cero.");
+                    return;
+                }
+                try {
+                    const leaderboardDocRef = doc(db, `artifacts/${appId}/public/data/leaderboard`, userId);
+                    const docSnap = await getDoc(leaderboardDocRef);
+                    
+                    let currentHighScore = 0;
+                    if (docSnap.exists()) {
+                        currentHighScore = docSnap.data().score || 0;
+                    }
+
+                    // Solo guarda si la puntuación actual es mejor.
+                    if (this.score > currentHighScore) {
+                        await setDoc(leaderboardDocRef, {
+                            userId: userId,
+                            username: username,
+                            score: this.score,
+                            lastUpdated: Date.now()
+                        }, { merge: true });
+                        console.log(`Puntuación más alta (${this.score}) guardada para ${username}.`);
+                    } else {
+                        console.log(`La puntuación actual (${this.score}) no es más alta que la guardada (${currentHighScore}).`);
+                    }
+                } catch (error) {
+                    console.error("Error al guardar la puntuación más alta:", error);
+                }
+            }
+
+            /**
+             * Carga y actualiza la tabla de clasificación en tiempo real.
+             */
+            loadLeaderboard() {
+                if (!this.isAuthReady) {
+                    console.warn("No se pudo cargar la tabla de clasificación: conexión no lista.");
+                    return;
+                }
+                const leaderboardCollectionRef = collection(db, `artifacts/${appId}/public/data/leaderboard`);
+                const q = query(leaderboardCollectionRef); // Consulta para obtener todas las puntuaciones.
+
+                onSnapshot(q, (snapshot) => {
+                    const scores = [];
+                    snapshot.forEach(doc => {
+                        scores.push(doc.data());
+                    });
+                    // Ordena las puntuaciones de mayor a menor.
+                    scores.sort((a, b) => b.score - a.score); 
+                    this.renderLeaderboard(scores);
+                }, (error) => {
+                    console.error("Error al obtener la tabla de clasificación:", error);
+                    this.leaderboardBody.innerHTML = `<tr><td colspan="3" style="color: #ff0000;">Error al cargar la clasificación.</td></tr>`;
+                });
+            }
+
+            /**
+             * Muestra las puntuaciones en la tabla de clasificación.
+             * @param {Array<object>} scores - Lista de puntuaciones.
+             */
+            renderLeaderboard(scores) {
+                this.leaderboardBody.innerHTML = ''; // Limpia la tabla.
+                if (scores.length === 0) {
+                    this.leaderboardBody.innerHTML = `<tr><td colspan="3">No hay puntuaciones aún. ¡Sé el primero!</td></tr>`;
+                    return;
+                }
+                scores.forEach((entry, index) => {
+                    const row = this.leaderboardBody.insertRow();
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${entry.username}</td>
+                        <td>${entry.score.toLocaleString()}</td>
+                    `;
+                });
+            }
+
+            /**
+             * Configura el tamaño del canvas y maneja el cambio de tamaño de la ventana.
+             */
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                // Si la ventana cambia de tamaño, ajusta el canvas.
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                });
+            }
+            
+            /**
+             * Configura el sistema de audio para los sonidos del juego.
+             */
+            setupAudio() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            /**
+             * Reproduce un sonido.
+             * @param {number} frequency - Frecuencia del sonido en Hz.
+             * @param {number} duration - Duración del sonido en segundos.
+             * @param {string} type - Tipo de onda ('sine', 'square', 'sawtooth', 'triangle').
+             */
+            playSound(frequency = 440, duration = 0.1, type = 'sine') {
+                if (!this.audioContext) return; // Si no hay audio, no hace nada.
+                
+                const oscillator = this.audioContext.createOscillator(); // Crea un oscilador de sonido.
+                const gainNode = this.audioContext.createGain(); // Para controlar el volumen.
+                
+                oscillator.connect(gainNode); // Conecta el oscilador al control de volumen.
+                gainNode.connect(this.audioContext.destination); // Conecta el volumen a la salida de audio.
+                
+                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime); // Establece la frecuencia.
+                oscillator.type = type; // Establece el tipo de sonido.
+                
+                gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime); // Volumen inicial.
+                // Hace que el sonido se desvanezca.
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                
+                oscillator.start(); // Inicia el sonido.
+                oscillator.stop(this.audioContext.currentTime + duration); // Detiene el sonido después de un tiempo.
+            }
+            
+            /**
+             * Asocia las acciones del usuario (clics, movimiento del ratón) con las funciones del juego.
+             */
+            bindEvents() {
+                // Cuando haces clic en el botón para entrar al juego (anónimo).
+                this.enterGameButton.addEventListener('click', () => {
+                    this.saveUsername();
+                });
+
+                // Cuando haces clic en el botón de Google Sign-In.
+                this.googleSignInButton.addEventListener('click', () => {
+                    this.signInWithGoogle();
+                });
+
+                // Cuando haces clic en el botón de inicio.
+                document.getElementById('startButton').addEventListener('click', () => {
+                    this.startGame();
+                });
+
+                // Cuando haces clic para ver la clasificación.
+                this.viewLeaderboardButton.addEventListener('click', () => {
+                    this.leaderboardScreen.style.display = 'flex';
+                    this.startScreen.style.display = 'none';
+                    // Asegúrate de que Firebase esté inicializado antes de cargar la clasificación
+                    this.initFirebaseOnce().then(() => {
+                        this.loadLeaderboard();
+                    }).catch(error => {
+                        console.error("Error al cargar la clasificación (initFirebaseOnce):", error);
+                        this.leaderboardBody.innerHTML = `<tr><td colspan="3" style="color: #ff0000;">Error al cargar la clasificación.</td></tr>`;
+                    });
+                });
+
+                // Cuando haces clic para cerrar la clasificación.
+                this.closeLeaderboardButton.addEventListener('click', () => {
+                    this.leaderboardScreen.style.display = 'none';
+                    this.startScreen.style.display = 'flex';
+                });
+
+                // Cuando haces clic en "JUGAR DE NUEVO" en la pantalla de Game Over.
+                this.playAgainButton.addEventListener('click', () => {
+                    this.gameOverScreen.style.display = 'none';
+                    this.startGame();
+                });
+
+                // Cuando haces clic en "MENÚ PRINCIPAL" en la pantalla de Game Over.
+                this.backToMenuButton.addEventListener('click', () => {
+                    this.gameOverScreen.style.display = 'none';
+                    this.startScreen.style.display = 'flex';
+                });
+                
+                // Sigue el movimiento del ratón para el cursor personalizado.
+                document.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                    this.updateCursor(); // Mueve el cursor.
+                });
+                
+                // Efectos del cursor cuando se presiona el botón del ratón.
+                document.addEventListener('mousedown', () => {
+                    this.customCursor.classList.add('clicking');
+                });
+                
+                // Efectos del cursor cuando se suelta el botón del ratón.
+                document.addEventListener('mouseup', () => {
+                    this.customCursor.classList.remove('clicking');
+                });
+                
+                // Cuando haces clic en el canvas para jugar.
+                this.canvas.addEventListener('click', (e) => {
+                    if (!this.gameStarted) return; // Solo si el juego está en marcha.
+                    this.handleClick(e.clientX, e.clientY);
+                });
+                
+                // Cuando tocas la pantalla en dispositivos táctiles.
+                this.canvas.addEventListener('touchstart', (e) => {
+                    if (!this.gameStarted) return; // Solo si el juego está en marcha.
+                    e.preventDefault(); // Evita el zoom o scroll.
+                    const touch = e.touches[0]; // Obtiene el primer toque.
+                    this.handleClick(touch.clientX, touch.clientY);
+                });
+            }
+            
+            /**
+             * Actualiza la posición del cursor personalizado.
+             */
+            updateCursor() {
+                this.customCursor.style.left = (this.mouseX - 15) + 'px';
+                this.customCursor.style.top = (this.mouseY - 15) + 'px';
+            }
+            
+            /**
+             * Inicia una nueva partida del juego.
+             */
+            startGame() {
+                if (!username || username === "Anónimo") {
+                    this.authScreen.style.display = 'flex';
+                    this.startScreen.style.display = 'none';
+                    this.authMessage.textContent = "Por favor, inicia sesión o introduce un nombre de usuario para jugar.";
+                    // Limpia el mensaje de error después de 3 segundos
+                    setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
+                    return;
+                }
+
+                this.startScreen.style.display = 'none';
+                this.gameOverScreen.style.display = 'none'; // Esconde la pantalla de Game Over.
+                this.gameStarted = true;
+                this.score = 0; // Reinicia la puntuación.
+                this.combo = 1; // Reinicia el combo.
+                this.maxCombo = 0; // Reinicia el combo más alto.
+                this.bpm = 120; // Reinicia el ritmo.
+                this.beatInterval = 60000 / this.bpm;
+                this.beatCircles = []; // Limpia los círculos.
+                this.particles = []; // Limpia las partículas.
+                this.updateUI(); // Actualiza la interfaz.
+                this.audioContext.resume(); // Reanuda el audio.
+                this.lastBeatTime = Date.now(); // Establece el tiempo del último beat.
+            }
+
+            /**
+             * Termina el juego y muestra la pantalla de Game Over.
+             */
+            gameOver() {
+                this.gameStarted = false;
+                this.saveHighScore(); // Guarda la puntuación.
+                this.finalScoreDisplay.textContent = this.score.toLocaleString();
+                this.gameOverScreen.style.display = 'flex';
+            }
+            
+            /**
+             * Maneja el clic del usuario en el juego.
+             * @param {number} x - Coordenada X del clic.
+             * @param {number} y - Coordenada Y del clic.
+             */
+            handleClick(x, y) {
+                let hit = false; // Para saber si se golpeó un círculo.
+                
+                // Revisa si se hizo clic en algún círculo.
+                this.beatCircles.forEach((circle, index) => {
+                    // Calcula la distancia entre el clic y el centro del círculo.
+                    const distance = Math.sqrt(
+                        Math.pow(x - circle.x, 2) + Math.pow(y - circle.y, 2)
+                    );
+                    
+                    if (distance < circle.radius) {
+                        hit = true; // Se golpeó un círculo.
+                        this.hitCircle(circle, index, x, y); // Llama a la función para manejar el golpe.
+                    }
+                });
+                
+                // Si no se golpeó ningún círculo, es un fallo.
+                if (!hit) {
+                    this.missClick(x, y);
+                }
+            }
+            
+            /**
+             * Maneja cuando se golpea un círculo.
+             * @param {object} circle - El círculo golpeado.
+             * @param {number} index - Su posición en la lista.
+             * @param {number} x - Coordenada X del golpe.
+             * @param {number} y - Coordenada Y del golpe.
+             */
+            hitCircle(circle, index, x, y) {
+                // Quita el círculo de la lista.
+                this.beatCircles.splice(index, 1);
+                
+                // Actualiza la puntuación y el combo.
+                this.score += 100 * this.combo; // Suma puntos.
+                this.combo = Math.min(this.combo + 1, 20); // Aumenta el combo (máximo 20).
+                this.maxCombo = Math.max(this.maxCombo, this.combo); // Guarda el combo más alto.
+                
+                // Reproduce un sonido de golpe, la frecuencia sube con el combo.
+                const frequency = 220 + (this.combo * 50);
+                this.playSound(frequency, 0.2, 'square');
+                
+                // Efecto visual en el cursor.
+                this.customCursor.classList.add('hit');
+                setTimeout(() => {
+                    this.customCursor.classList.remove('hit');
+                }, 200);
+                
+                // Crea partículas donde se golpeó.
+                this.createParticles(x, y, circle.color);
+                
+                // Hace un flash en la pantalla.
+                this.screenFlash.style.animation = 'screenFlash 0.1s ease-out';
+                setTimeout(() => {
+                    this.screenFlash.style.animation = ''; // Quita la animación.
+                }, 100);
+                
+                // Agita la pantalla.
+                this.shakeScreen();
+                
+                // Actualiza la puntuación y el combo en la pantalla.
+                this.updateUI();
+            }
+            
+            /**
+             * Maneja cuando se falla un clic.
+             * @param {number} x - Coordenada X del clic.
+             * @param {number} y - Coordenada Y del clic.
+             */
+            missClick(x, y) {
+                this.combo = 1; // Reinicia el combo.
+                this.playSound(150, 0.3, 'sawtooth'); // Sonido de fallo.
+                
+                // Efecto visual de fallo en el cursor.
+                this.customCursor.style.borderColor = '#ff0000'; // Borde rojo.
+                this.customCursor.style.boxShadow = '0 0 20px #ff0000, inset 0 0 20px rgba(255, 0, 0, 0.2)';
+                setTimeout(() => {
+                    // Restaura el color y la sombra del cursor.
+                    this.customCursor.style.borderColor = '#00ffff';
+                    this.customCursor.style.boxShadow = '0 0 20px #00ffff, inset 0 0 20px rgba(0, 255, 255, 0.2)';
+                }, 300);
+                
+                // Crea partículas rojas donde se falló.
+                this.createParticles(x, y, '#ff0000', 5);
+                this.updateUI(); // Actualiza la interfaz.
+                this.gameOver(); // Termina el juego.
+            }
+            
+            /**
+             * Crea partículas en una posición y color.
+             * @param {number} x - Posición X.
+             * @param {number} y - Posición Y.
+             * @param {string} color - Color de las partículas.
+             * @param {number} count - Cantidad de partículas (por defecto 12).
+             */
+            createParticles(x, y, color, count = 12) {
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 * i) / count; // Ángulo para que se separen.
+                    const velocity = 3 + Math.random() * 5; // Velocidad aleatoria.
+                    const size = 3 + Math.random() * 5; // Tamaño aleatorio.
+                    
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * velocity, // Velocidad horizontal.
+                        vy: Math.sin(angle) * velocity, // Velocidad vertical.
+                        life: 1, // Vida de la partícula (1 es el 100%).
+                        decay: 0.02 + Math.random() * 0.02, // Cuánto tarda en desaparecer.
+                        size: size,
+                        color: color
+                    });
+                }
+            }
+            
+            /**
+             * Agita la pantalla.
+             */
+            shakeScreen() {
+                const intensity = Math.min(this.combo * 2, 20); // La fuerza de la agitación.
+                // Mueve el contenedor del juego un poco al azar.
+                this.gameContainer.style.transform = `translate(${(Math.random() - 0.5) * intensity}px, ${(Math.random() - 0.5) * intensity}px)`;
+                
+                // Vuelve a la posición normal después de un rato.
+                setTimeout(() => {
+                    this.gameContainer.style.transform = 'translate(0, 0)';
+                }, 50);
+            }
+            
+            /**
+             * Actualiza la puntuación y el combo en la pantalla.
+             */
+            updateUI() {
+                document.getElementById('score').textContent = `SCORE: ${this.score.toLocaleString()}`;
+                document.getElementById('combo').textContent = `COMBO: x${this.combo}`;
+            }
+            
+            /**
+             * Crea un nuevo círculo de ritmo en un lugar aleatorio.
+             */
+            spawnBeatCircle() {
+                let x = 100 + Math.random() * (this.canvas.width - 200); // Posición X aleatoria.
+                let y = 100 + Math.random() * (this.canvas.height - 200); // Posición Y aleatoria.
+                const radius = 30 + Math.random() * 40; // Tamaño aleatorio.
+                const color = this.colors[this.currentColorIndex]; // Color del círculo.
+                
+                // A veces los círculos aparecen cerca del ratón.
+                const urgencyChance = Math.random();
+                if (urgencyChance < 0.3 && this.mouseX && this.mouseY) {
+                    const offsetX = (Math.random() - 0.5) * 200;
+                    const offsetY = (Math.random() - 0.5) * 200;
+                    // Ajusta la posición para que esté cerca del cursor, pero dentro de los límites.
+                    x = Math.max(100, Math.min(this.canvas.width - 100, this.mouseX + offsetX));
+                    y = Math.max(100, Math.min(this.canvas.height - 100, this.mouseY + offsetY));
+                }
+                
+                // Cambia al siguiente color.
+                this.currentColorIndex = (this.currentColorIndex + 1) % this.colors.length;
+                
+                this.beatCircles.push({
+                    x: x,
+                    y: y,
+                    radius: radius,
+                    color: color,
+                    life: 3000, // Tiempo que dura el círculo (3 segundos).
+                    birthTime: Date.now() // Cuando se creó el círculo.
+                });
+                
+                // Pequeño pulso visual donde aparece el círculo.
+                const indicator = document.createElement('div');
+                indicator.style.cssText = `
+                    position: fixed;
+                    left: ${x - 5}px;
+                    top: ${y - 5}px;
+                    width: 10px;
+                    height: 10px;
+                    background: ${color};
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 1000;
+                    animation: indicatorPulse 0.5s ease-out forwards;
+                `;
+                
+                // Define la animación del indicador.
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes indicatorPulse {
+                        0% { transform: scale(0); opacity: 1; }
+                        100% { transform: scale(3); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+                document.body.appendChild(indicator);
+                
+                // Quita el indicador después de la animación.
+                setTimeout(() => {
+                    document.body.removeChild(indicator);
+                    document.head.removeChild(style);
+                }, 500);
+                
+                // Reproduce un sonido cuando aparece un círculo.
+                this.playSound(330, 0.1, 'triangle');
+            }
+            
+            /**
+             * Actualiza el estado de los círculos (quita los que se acaban, crea nuevos).
+             */
+            updateBeatCircles() {
+                const now = Date.now();
+                
+                // Filtra los círculos que ya se acabaron.
+                this.beatCircles = this.beatCircles.filter(circle => {
+                    if (now - circle.birthTime > circle.life) {
+                        this.gameOver(); // Si un círculo se acaba sin ser golpeado, es Game Over.
+                        return false; // Quita el círculo.
+                    }
+                    return true; // Mantiene el círculo.
+                    }
+                );
+                
+                // Crea nuevos círculos si ya pasó el tiempo del beat.
+                if (now - this.lastBeatTime > this.beatInterval) {
+                    this.spawnBeatCircle();
+                    this.lastBeatTime = now;
+                    
+                    // Aumenta la dificultad cada 2000 puntos.
+                    if (this.score > 0 && this.score % 2000 === 0) {
+                        this.bpm = Math.min(this.bpm + 5, 180); // Sube el BPM (más rápido).
+                        this.beatInterval = 60000 / this.bpm; // Recalcula el tiempo entre beats.
+                    }
+                }
+            }
+            
+            /**
+             * Actualiza la posición y vida de las partículas.
+             */
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx; // Mueve la partícula horizontalmente.
+                    particle.y += particle.vy; // Mueve la partícula verticalmente.
+                    particle.life -= particle.decay; // Reduce la vida de la partícula.
+                    particle.vx *= 0.98; // Reduce la velocidad (como si hubiera fricción).
+                    particle.vy *= 0.98;
+                    
+                    return particle.life > 0; // Mantiene la partícula si aún está viva.
+                });
+            }
+            
+            /**
+             * Dibuja todos los elementos del juego en el canvas.
+             */
+            render() {
+                // Limpia el canvas con un color semitransparente para un efecto de rastro.
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Dibuja los círculos de ritmo.
+                this.beatCircles.forEach(circle => {
+                    const age = (Date.now() - circle.birthTime) / circle.life; // Edad del círculo (de 0 a 1).
+                    const alpha = 1 - age; // Opacidad basada en la edad (se desvanece).
+                    const pulseScale = 1 + Math.sin(Date.now() * 0.01) * 0.1; // Escala para el efecto de pulso.
+                    
+                    this.ctx.save(); // Guarda la configuración actual del dibujo.
+                    this.ctx.globalAlpha = alpha; // Establece la opacidad.
+                    this.ctx.strokeStyle = circle.color; // Color del borde.
+                    this.ctx.lineWidth = 3; // Ancho del borde.
+                    this.ctx.shadowBlur = 20; // Desenfoque de la sombra.
+                    this.ctx.shadowColor = circle.color; // Color de la sombra.
+                    
+                    this.ctx.beginPath(); // Empieza a dibujar una forma.
+                    this.ctx.arc(circle.x, circle.y, circle.radius * pulseScale, 0, Math.PI * 2); // Dibuja el círculo.
+                    this.ctx.stroke(); // Dibuja el borde.
+                    
+                    // Dibuja un brillo interior para el círculo.
+                    this.ctx.globalAlpha = alpha * 0.3; // Menor opacidad para el brillo.
+                    this.ctx.fillStyle = circle.color; // Color de relleno.
+                    this.ctx.fill(); // Rellena el círculo.
+                    
+                    this.ctx.restore(); // Restaura la configuración de dibujo anterior.
+                });
+                
+                // Dibuja las partículas.
+                this.particles.forEach(particle => {
+                    this.ctx.save(); // Guarda la configuración actual del dibujo.
+                    this.ctx.globalAlpha = particle.life; // Opacidad basada en la vida de la partícula.
+                    this.ctx.fillStyle = particle.color; // Color de la partícula.
+                    this.ctx.shadowBlur = 10; // Desenfoque de la sombra.
+                    this.ctx.shadowColor = particle.color; // Color de la sombra.
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2); // Dibuja la partícula.
+                    this.ctx.fill(); // Rellena la partícula.
+                    
+                    this.ctx.restore(); // Restaura la configuración de dibujo anterior.
+                });
+            }
+            
+            /**
+             * El bucle principal que hace que el juego funcione.
+             */
+            animate() {
+                if (this.gameStarted) {
+                    this.updateBeatCircles(); // Actualiza los círculos.
+                    this.updateParticles(); // Actualiza las partículas.
+                }
+                
+                this.render(); // Dibuja todo.
+                // Pide que se dibuje el siguiente frame.
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // Inicia el juego cuando la página se carga.
+        window.addEventListener('load', () => {
+            const game = new NeonBeats();
+            // Asegura que la pantalla de autenticación sea visible al cargar
+            game.authScreen.style.display = 'flex';
+            game.startScreen.style.display = 'none'; // Asegura que la pantalla de inicio esté oculta
+            game.authLoadingMessage.style.display = 'none'; // Asegura que el mensaje de carga esté oculto
+        });
+        
+        // Evita que aparezca el menú al hacer clic derecho.
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
