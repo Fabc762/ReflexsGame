@@ -696,6 +696,8 @@
                 this.setupCanvas();
                 this.setupAudio();
                 this.bindEvents();
+                // Llamada a animate con bind para asegurar el contexto de 'this'
+                this.animate = this.animate.bind(this); 
                 this.animate(); // Empieza el bucle de animación.
             }
             
@@ -1526,7 +1528,7 @@
                 
                 this.render(); // Dibuja todo.
                 // Pide que se dibuje el siguiente frame.
-                requestAnimationFrame(() => this.animate());
+                requestAnimationFrame(this.animate); // Corregido: Usar this.animate directamente
             }
         }
         
