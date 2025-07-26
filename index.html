@@ -699,6 +699,10 @@
                 // Aseguramos que 'this' siempre se refiera a la instancia de NeonBeats dentro de animate
                 this.animate = this.animate.bind(this); 
                 this.animate(); // Empieza el bucle de animación.
+
+                // --- DEBUG LOGS al final del constructor ---
+                console.log('DEBUG: NeonBeats constructor finalizado. this =', this);
+                console.log('DEBUG: typeof this.updateParticles en constructor =', typeof this.updateParticles);
             }
             
             /**
@@ -1328,6 +1332,21 @@
             }
             
             /**
+             * Actualiza la posición y vida de las partículas.
+             */
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx; // Mueve la partícula horizontalmente.
+                    particle.y += particle.vy; // Mueve la partícula verticalmente.
+                    particle.life -= particle.decay; // Reduce la vida de la partícula.
+                    particle.vx *= 0.98; // Reduce la velocidad (como si hubiera fricción).
+                    particle.vy *= 0.98;
+                    
+                    return particle.life > 0; // Mantiene la partícula si aún está viva.
+                });
+            }
+            
+            /**
              * Agita la pantalla.
              */
             shakeScreen() {
@@ -1520,7 +1539,9 @@
              */
             animate() {
                 // --- DEBUG LOG ---
-                console.log('Animate loop: gameStarted =', this.gameStarted);
+                console.log('DEBUG: Animate loop iniciado. this =', this);
+                console.log('DEBUG: typeof this.updateParticles en animate =', typeof this.updateParticles);
+
                 if (this.gameStarted) {
                     this.updateBeatCircles(); // Actualiza los círculos.
                     this.updateParticles(); // Actualiza las partículas.
