@@ -1185,6 +1185,15 @@
                 this.updateUI(); // Actualiza la interfaz.
                 this.audioContext.resume(); // Reanuda el audio.
                 this.lastBeatTime = Date.now(); // Establece el tiempo del último beat.
+
+                // --- DEBUG LOGS ---
+                console.log('--- Game Started ---');
+                console.log('Difficulty:', difficulty);
+                console.log('Initial BPM:', this.bpm);
+                console.log('Circle Life:', this.circleLife, 'ms');
+                console.log('Beat Interval:', this.beatInterval, 'ms');
+                console.log('Last Beat Time (initial):', this.lastBeatTime);
+                console.log('--------------------');
             }
 
             /**
@@ -1403,6 +1412,9 @@
                 
                 // Reproduce un sonido cuando aparece un círculo.
                 this.playSound(330, 0.1, 'triangle');
+
+                // --- DEBUG LOG ---
+                console.log('spawnBeatCircle: New circle created. Total circles:', this.beatCircles.length);
             }
             
             /**
@@ -1414,6 +1426,8 @@
                 // Filtra los círculos que ya se acabaron.
                 this.beatCircles = this.beatCircles.filter(circle => {
                     if (now - circle.birthTime > circle.life) {
+                        // --- DEBUG LOG ---
+                        console.log('Circle expired. Game Over triggered.');
                         this.gameOver(); // Si un círculo se acaba sin ser golpeado, es Game Over.
                         return false; // Quita el círculo.
                     }
@@ -1422,7 +1436,11 @@
                 );
                 
                 // Crea nuevos círculos si ya pasó el tiempo del beat.
+                // --- DEBUG LOG ---
+                console.log('updateBeatCircles: Time since last beat:', now - this.lastBeatTime, 'ms. Required interval:', this.beatInterval, 'ms.');
                 if (now - this.lastBeatTime > this.beatInterval) {
+                    // --- DEBUG LOG ---
+                    console.log('Condition met: Spawning new beat circle!');
                     this.spawnBeatCircle();
                     this.lastBeatTime = now;
                     
@@ -1430,6 +1448,8 @@
                     if (this.score > 0 && this.score % 2000 === 0) {
                         this.bpm = Math.min(this.bpm + this.difficultyIncreaseRate, 180); // Sube el BPM según la dificultad.
                         this.beatInterval = 60000 / this.bpm; // Recalcula el tiempo entre beats.
+                        // --- DEBUG LOG ---
+                        console.log('Difficulty increased! New BPM:', this.bpm, 'New Beat Interval:', this.beatInterval);
                     }
                 }
             }
@@ -1443,6 +1463,8 @@
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
                 // Dibuja los círculos de ritmo.
+                // --- DEBUG LOG ---
+                console.log('Render: Number of circles to draw:', this.beatCircles.length);
                 this.beatCircles.forEach(circle => {
                     const age = (Date.now() - circle.birthTime) / circle.life; // Edad del círculo (de 0 a 1).
                     const alpha = 1 - age; // Opacidad basada en la edad (se desvanece).
