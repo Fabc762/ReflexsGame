@@ -536,7 +536,8 @@
         <div id="startScreen" style="display: none;"> <!-- Oculto por defecto -->
             <h1 id="title">NEON BEATS</h1>
             <p id="subtitle">Click the beats • Feel the rhythm • Create magic</p>
-            <button id="startButton" class="game-button">ENTRAR AL JUEGO</button>
+            <button id="easyButton" class="game-button">JUGAR FÁCIL</button>
+            <button id="hardButton" class="game-button">JUGAR DIFÍCIL</button>
             <button id="viewLeaderboardButton" class="game-button">VER CLASIFICACIÓN</button>
             <p id="instructions">Click on the glowing circles as they appear to the beat!</p>
         </div>
@@ -547,7 +548,7 @@
                 <h2 class="auth-title">¡Bienvenido a Neon Beats!</h2>
                 <!-- Mensaje de carga/estado de la conexión (oculto por defecto) -->
                 <p id="authLoadingMessage" style="color: #00ffff; margin-bottom: 10px; display: none;">Conectando a Firebase...</p>
-                <p style="color: #ccc; margin-bottom: 20px;">Inicia sesión o introduce tu nombre de usuario:</p>
+                <p id="authPromptMessage" style="color: #ccc; margin-bottom: 20px;">Inicia sesión o introduce tu nombre de usuario:</p>
                 
                 <!-- Botón de Google Sign-In -->
                 <button id="googleSignInButton" class="auth-button">
@@ -555,11 +556,14 @@
                     Iniciar sesión con Google
                 </button>
 
-                <div style="margin: 20px 0; color: #888;">O</div>
+                <div style="margin: 20px 0; color: #888; display: none;" id="orSeparator">O</div>
 
                 <input type="text" id="usernameInput" class="auth-input" placeholder="Tu nombre de usuario" maxlength="15">
                 <button id="enterGameButton" class="auth-button">ENTRAR AL JUEGO (Anónimo)</button>
                 <p id="authMessage" style="color: #ff0000; margin-top: 10px;"></p>
+                <p id="passwordInfo" style="color: #888; font-size: 0.85rem; margin-top: 15px; display: none;">
+                    Nota: Al iniciar sesión con Google, tu contraseña es gestionada por Google. No necesitas establecer una nueva aquí.
+                </p>
             </div>
         </div>
 
@@ -610,8 +614,7 @@
           apiKey: "AIzaSyBVPNIsjeYqaGWiWngJRR-ZBGJ9JWI40yg",
           authDomain: "neonbeatsgame-c3c1d.firebaseapp.com",
           projectId: "neonbeatsgame-c3c1d",
-          storageBucket: "neonbeatsgame-c3c1d.firebasestorage.app",
-          messagingSenderId: "381267123393",
+          storageBucket: "neonbeatsgame-c3c1d.firebaseapp.com",
           appId: "1:381267123393:web:8058ce8b264a6ba91fc840",
           measurementId: "G-KVXTMB6NNN"
         };
@@ -655,7 +658,13 @@
                 this.finalScoreDisplay = document.getElementById('finalScore');
                 this.playAgainButton = document.getElementById('playAgainButton');
                 this.backToMenuButton = document.getElementById('backToMenuButton');
-                
+                this.authPromptMessage = document.getElementById('authPromptMessage'); // Mensaje de prompt de autenticación
+                this.orSeparator = document.getElementById('orSeparator'); // Separador "O"
+                this.passwordInfo = document.getElementById('passwordInfo'); // Información de contraseña
+                // Nuevos botones de dificultad
+                this.easyButton = document.getElementById('easyButton');
+                this.hardButton = document.getElementById('hardButton');
+
                 // Variables que controlan el estado del juego.
                 this.score = 0; // Puntuación actual.
                 this.combo = 1; // Multiplicador de combo.
@@ -663,8 +672,13 @@
                 this.beatCircles = []; // Lista de círculos que aparecen.
                 this.particles = []; // Lista de partículas que explotan.
                 this.gameStarted = false; // Si el juego está en marcha o no.
-                this.bpm = 120; // Ritmo de los beats por minuto.
-                this.beatInterval = 60000 / this.bpm; // Tiempo entre cada beat en milisegundos.
+                
+                // Variables de dificultad, se inicializarán en startGame
+                this.bpm = 0; 
+                this.beatInterval = 0;
+                this.circleLife = 0;
+                this.difficultyIncreaseRate = 0;
+
                 this.lastBeatTime = 0; // Cuándo apareció el último beat.
                 this.audioContext = null; // Para los sonidos del juego.
                 
@@ -675,6 +689,8 @@
                 this.mouseY = 0; // Posición Y del ratón.
 
                 this.isAuthReady = false; // Para saber si Firebase está listo.
+                // Propiedad de instancia para la promesa de inicio de sesión anónimo
+                this.anonymousSignInPromiseResolve = null; 
                 
                 // Configuración inicial del juego.
                 this.setupCanvas();
@@ -714,57 +730,101 @@
                             this.userIdDisplay.textContent = `ID de Usuario: ${userId}`;
                             console.log("Usuario autenticado:", userId);
 
-                            // Intenta cargar el nombre de usuario guardado o usar el displayName de Google
-                            let loadedUsername = null;
+                            let determinedUsername = "Anónimo"; // Valor por defecto
                             const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, "userProfile");
                             const userDocSnap = await getDoc(userProfileDocRef);
+
                             if (userDocSnap.exists()) {
-                                loadedUsername = userDocSnap.data().username;
+                                determinedUsername = userDocSnap.data().username;
+                                console.log("Nombre de usuario cargado desde Firestore:", determinedUsername);
+                            } else if (user.displayName) { // Si no hay perfil de Firestore, usa el displayName de Google
+                                determinedUsername = user.displayName;
+                                console.log("Usando displayName de Google:", determinedUsername);
+                                // Guarda este displayName en Firestore inmediatamente para que persista
+                                await setDoc(userProfileDocRef, { username: determinedUsername }, { merge: true });
                             }
 
-                            // Si el usuario se autenticó con Google y tiene un displayName, úsalo
-                            if (user.providerData && user.providerData.length > 0 && user.providerData[0].providerId === 'google.com' && user.displayName) {
-                                username = user.displayName;
-                                // Guarda el displayName de Google en el perfil si no hay uno o es diferente
-                                if (!loadedUsername || loadedUsername !== username) {
-                                    await setDoc(userProfileDocRef, { username: username }, { merge: true });
-                                    console.log("Nombre de usuario de Google guardado:", username);
+                            username = determinedUsername; // Actualiza la variable global username
+                            this.usernameInput.value = username; // Pre-rellena el campo de entrada
+                            console.log("Nombre de usuario final determinado:", username); // Log del nombre de usuario global
+                            
+                            this.isAuthReady = true; // Firebase está listo para operaciones
+
+                            // Lógica para decidir qué pantalla mostrar después de la autenticación
+                            // Si es un usuario nuevo de Google o un usuario anónimo sin nombre guardado,
+                            // o si el nombre es "Anónimo" (lo que indica que no se ha establecido un nombre personalizado),
+                            // entonces mantenemos la pantalla de autenticación para que elija/confirme el nombre.
+                            if (!userDocSnap.exists() || username === "Anónimo" || user.isAnonymous) {
+                                this.authScreen.style.display = 'flex';
+                                this.startScreen.style.display = 'none';
+                                this.authLoadingMessage.style.display = 'none';
+                                this.usernameInput.disabled = false;
+                                this.enterGameButton.disabled = false;
+                                this.googleSignInButton.disabled = false;
+
+                                if (user.providerData && user.providerData.length > 0 && user.providerData[0].providerId === 'google.com') {
+                                    this.authPromptMessage.textContent = `¡Hola, ${user.displayName || 'usuario de Google'}! Por favor, confirma o elige tu nombre de usuario para el juego.`;
+                                    this.enterGameButton.textContent = "CONTINUAR CON ESTE NOMBRE";
+                                    this.usernameInput.value = user.displayName || ""; // Pre-rellena con el nombre de Google
+                                    this.orSeparator.style.display = 'none'; // Oculta el separador "O"
+                                    this.googleSignInButton.style.display = 'none'; // Oculta el botón de Google
+                                    this.passwordInfo.style.display = 'block'; // Muestra la info de contraseña
+                                } else {
+                                    this.authPromptMessage.textContent = "¡Bienvenido! Elige tu nombre de usuario para el juego:";
+                                    this.enterGameButton.textContent = "ENTRAR AL JUEGO (Anónimo)";
+                                    this.orSeparator.style.display = 'block'; // Muestra el separador "O"
+                                    this.googleSignInButton.style.display = 'flex'; // Muestra el botón de Google
+                                    this.passwordInfo.style.display = 'none'; // Oculta la info de contraseña
                                 }
-                            } else if (loadedUsername) {
-                                username = loadedUsername;
                             } else {
-                                // Si no hay nombre de Google ni perfil guardado, se mantiene "Anónimo" o se pide uno
-                                username = "Anónimo";
+                                // El usuario ya tiene un nombre guardado (de una sesión anónima o de Google anterior)
+                                this.authScreen.style.display = 'none';
+                                this.startScreen.style.display = 'flex';
+                                this.loadLeaderboard();
                             }
-                            this.usernameInput.value = username;
-                            console.log("Nombre de usuario final:", username);
-                            
-                            this.isAuthReady = true; // La conexión de Firebase está lista
-                            
-                            // Oculta la pantalla de autenticación y muestra la de inicio del juego
-                            this.authScreen.style.display = 'none';
-                            this.startScreen.style.display = 'flex';
-                            this.loadLeaderboard(); // Carga la tabla de clasificación.
+
+                            // Resuelve la promesa de inicio de sesión anónimo si está pendiente
+                            if (this.anonymousSignInPromiseResolve) { 
+                                this.anonymousSignInPromiseResolve(user); 
+                                this.anonymousSignInPromiseResolve = null; 
+                            }
+
                         } else {
-                            // Si el usuario cierra sesión o no está autenticado, asegura que la pantalla de autenticación esté visible
-                            this.isAuthReady = false; // Firebase no está listo para operaciones sin un usuario
+                            // Usuario ha cerrado sesión o no está autenticado
+                            this.isAuthReady = false;
                             this.authScreen.style.display = 'flex';
                             this.startScreen.style.display = 'none';
-                            // Habilita los botones y campo de usuario si no hay un usuario autenticado
                             this.usernameInput.disabled = false;
                             this.enterGameButton.disabled = false;
                             this.googleSignInButton.disabled = false;
-                            this.authLoadingMessage.style.display = 'none'; // Asegura que el mensaje de carga esté oculto
+                            this.authLoadingMessage.style.display = 'none';
+                            username = "Anónimo"; // Resetea el nombre de usuario global si se cierra sesión
+                            this.usernameInput.value = ""; // Limpia el campo de entrada
+                            this.userIdDisplay.textContent = `ID de Usuario: No autenticado`;
+                            this.authMessage.textContent = ""; // Limpia el mensaje de autenticación
+                            this.authPromptMessage.textContent = "Inicia sesión o introduce tu nombre de usuario:"; // Resetea el mensaje de prompt
+                            this.enterGameButton.textContent = "ENTRAR AL JUEGO (Anónimo)"; // Resetea el texto del botón
+                            this.orSeparator.style.display = 'block'; // Muestra el separador "O"
+                            this.googleSignInButton.style.display = 'flex'; // Muestra el botón de Google
+                            this.passwordInfo.style.display = 'none'; // Oculta la info de contraseña
+                            if (this.anonymousSignInPromiseResolve) { 
+                                this.anonymousSignInPromiseResolve(null); 
+                                this.anonymousSignInPromiseResolve = null; 
+                            }
                         }
                     });
                 } catch (error) {
                     console.error("Error al iniciar Firebase o sesión:", error);
                     this.authMessage.textContent = "Error al conectar. Intenta recargar.";
                     this.authScreen.style.display = 'flex';
-                    this.usernameInput.disabled = true; // Mantiene deshabilitado en caso de error
-                    this.enterGameButton.disabled = true; // Mantiene deshabilitado en caso de error
-                    this.googleSignInButton.disabled = true; // Mantiene deshabilitado en caso de error
-                    this.authLoadingMessage.style.display = 'none'; // Limpia el mensaje de carga
+                    this.usernameInput.disabled = true;
+                    this.enterGameButton.disabled = true;
+                    this.googleSignInButton.disabled = true;
+                    this.authLoadingMessage.style.display = 'none';
+                    if (this.anonymousSignInPromiseResolve) { 
+                        this.anonymousSignInPromiseResolve(null); 
+                        this.anonymousSignInPromiseResolve = null; 
+                    }
                 }
             }
 
@@ -772,65 +832,62 @@
              * Maneja el inicio de sesión con Google.
              */
             async signInWithGoogle() {
-                // Muestra el mensaje de carga y deshabilita los campos mientras se procesa
                 this.authLoadingMessage.textContent = "Iniciando sesión con Google...";
                 this.authLoadingMessage.style.display = 'block';
                 this.usernameInput.disabled = true;
                 this.enterGameButton.disabled = true;
                 this.googleSignInButton.disabled = true;
+                this.authMessage.textContent = ""; // Limpia mensajes anteriores
 
                 try {
-                    await this.initFirebaseOnce(); // Asegura que Firebase esté inicializado
-                    const provider = new GoogleAuthProvider();
-                    const result = await signInWithPopup(auth, provider);
-                    console.log("Inicio de sesión con Google exitoso:", result.user.displayName);
-                    // onAuthStateChanged se encargará de actualizar la UI y el nombre de usuario
+                    await this.initFirebaseOnce(); // Asegura que Firebase esté inicializado y el listener onAuthStateChanged configurado
+                    // signInWithPopup disparará onAuthStateChanged, que luego manejará la UI
+                    await signInWithPopup(auth, new GoogleAuthProvider());
                 } catch (error) {
                     console.error("Error al iniciar sesión con Google:", error);
                     let errorMessage = "Error al iniciar sesión con Google.";
                     if (error.code === 'auth/popup-closed-by-user') {
                         errorMessage = "Inicio de sesión cancelado.";
                     } else if (error.code === 'auth/cancelled-popup-request') {
-                        errorMessage = "Ya hay una ventana de inicio de sesión abierta.";
+                        errorMessage = "Ya hay una ventana de inicio de sesión abierta. Ciérrala e inténtalo de nuevo.";
                     } else if (error.code === 'auth/unauthorized-domain') {
-                        errorMessage = "Dominio no autorizado. Añade tu dominio (ej. file:// o localhost) en la consola de Firebase > Authentication > Settings > Authorized domains.";
+                        errorMessage = "Error de dominio no autorizado. Asegúrate de añadir 'file://' (si abres el archivo directamente) o 'localhost' (si usas un servidor local) en la consola de Firebase > Authentication > Settings > Authorized domains.";
                     }
                     this.authMessage.textContent = errorMessage;
-                    // Habilita los campos de nuevo en caso de error
                     this.usernameInput.disabled = false;
                     this.enterGameButton.disabled = false;
                     this.googleSignInButton.disabled = false;
-                    this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
-                    setTimeout(() => { this.authMessage.textContent = ""; }, 8000); // Aumenta el tiempo para leer el mensaje
+                    this.authLoadingMessage.style.display = 'none';
+                    setTimeout(() => { this.authMessage.textContent = ""; }, 12000); // Aumenta el tiempo del mensaje
                 }
             }
 
             /**
-             * Guarda el nombre de usuario en la base de datos (para usuarios anónimos).
+             * Guarda el nombre de usuario en la base de datos (para usuarios anónimos y de Google).
              */
             async saveUsername() {
-                // Muestra el mensaje de carga y deshabilita los campos mientras se procesa
                 this.authLoadingMessage.textContent = "Guardando nombre de usuario...";
                 this.authLoadingMessage.style.display = 'block';
                 this.usernameInput.disabled = true;
                 this.enterGameButton.disabled = true;
                 this.googleSignInButton.disabled = true;
+                this.authMessage.textContent = ""; // Limpia mensajes anteriores
 
                 try {
                     await this.initFirebaseOnce(); // Asegura que Firebase esté inicializado
-                    // Si no hay un usuario autenticado (por ejemplo, si se inicia directamente con anónimo),
-                    // asegúrate de que se autentique anónimamente aquí.
+
+                    // Si no hay un usuario autenticado, esto significa que es un nuevo inicio de sesión anónimo
                     if (!auth.currentUser) {
-                        await signInAnonymously(auth);
+                        await new Promise(resolve => {
+                            this.anonymousSignInPromiseResolve = resolve;
+                            signInAnonymously(auth);
+                        });
+                        // onAuthStateChanged habrá actualizado userId y username por ahora
                     }
 
+                    // Asegura que la autenticación esté lista y el userId esté disponible
                     if (!this.isAuthReady || !userId) {
-                        this.authMessage.textContent = "Error: La conexión no está lista.";
-                        // Habilita los campos de nuevo en caso de error
-                        this.usernameInput.disabled = false;
-                        this.enterGameButton.disabled = false;
-                        this.googleSignInButton.disabled = false;
-                        this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                        this.authMessage.textContent = "Error: Conexión no lista. Intenta de nuevo.";
                         setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
                         return;
                     }
@@ -838,31 +895,32 @@
                     const newUsername = this.usernameInput.value.trim();
                     if (newUsername.length < 3) {
                         this.authMessage.textContent = "El nombre de usuario debe tener al menos 3 letras.";
-                        // Habilita los campos de nuevo en caso de error
-                        this.usernameInput.disabled = false;
-                        this.enterGameButton.disabled = false;
-                        this.googleSignInButton.disabled = false;
-                        this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
                         setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
                         return;
                     }
-                    username = newUsername;
                     
+                    username = newUsername; // Actualiza la variable global username
                     const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, "userProfile");
                     await setDoc(userDocRef, { username: username }, { merge: true });
-                    console.log("Nombre de usuario guardado:", username);
-                    // onAuthStateChanged se encargará de ocultar la pantalla de autenticación y mostrar la de inicio del juego
-                    this.authMessage.textContent = ""; // Borra mensajes de error.
-                    this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
+                    console.log("Nombre de usuario guardado en Firestore:", username);
+
+                    this.authMessage.textContent = "";
+                    this.authLoadingMessage.style.display = 'none';
+                    
+                    // *** TRANSICIÓN AL JUEGO DESPUÉS DE GUARDAR EL NOMBRE DE USUARIO ***
+                    this.authScreen.style.display = 'none';
+                    this.startScreen.style.display = 'flex';
+                    this.loadLeaderboard();
+
                 } catch (error) {
                     console.error("Error al guardar el nombre de usuario:", error);
                     this.authMessage.textContent = "Error al guardar el nombre de usuario.";
-                    // Habilita los campos de nuevo en caso de error
+                    setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
+                } finally {
                     this.usernameInput.disabled = false;
                     this.enterGameButton.disabled = false;
                     this.googleSignInButton.disabled = false;
-                    this.authLoadingMessage.style.display = 'none'; // Oculta el mensaje de carga
-                    setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
+                    this.authLoadingMessage.style.display = 'none';
                 }
             }
 
@@ -996,7 +1054,7 @@
              * Asocia las acciones del usuario (clics, movimiento del ratón) con las funciones del juego.
              */
             bindEvents() {
-                // Cuando haces clic en el botón para entrar al juego (anónimo).
+                // Cuando haces clic en el botón para entrar al juego (anónimo/confirmar nombre).
                 this.enterGameButton.addEventListener('click', () => {
                     this.saveUsername();
                 });
@@ -1006,9 +1064,13 @@
                     this.signInWithGoogle();
                 });
 
-                // Cuando haces clic en el botón de inicio.
-                document.getElementById('startButton').addEventListener('click', () => {
-                    this.startGame();
+                // Cuando haces clic en los botones de dificultad
+                this.easyButton.addEventListener('click', () => {
+                    this.startGame('easy');
+                });
+
+                this.hardButton.addEventListener('click', () => {
+                    this.startGame('hard');
                 });
 
                 // Cuando haces clic para ver la clasificación.
@@ -1033,7 +1095,10 @@
                 // Cuando haces clic en "JUGAR DE NUEVO" en la pantalla de Game Over.
                 this.playAgainButton.addEventListener('click', () => {
                     this.gameOverScreen.style.display = 'none';
-                    this.startGame();
+                    // Al jugar de nuevo, volvemos a la pantalla de inicio para elegir dificultad.
+                    this.startScreen.style.display = 'flex'; 
+                    // Reiniciar el juego con la última dificultad elegida o pedir que la elijan de nuevo.
+                    // Por simplicidad, volvemos a la pantalla de inicio para que elijan.
                 });
 
                 // Cuando haces clic en "MENÚ PRINCIPAL" en la pantalla de Game Over.
@@ -1084,13 +1149,14 @@
             
             /**
              * Inicia una nueva partida del juego.
+             * @param {string} difficulty - La dificultad elegida ('easy' o 'hard').
              */
-            startGame() {
+            startGame(difficulty) {
+                // Esta verificación ahora es más robusta ya que username se determina en onAuthStateChanged
                 if (!username || username === "Anónimo") {
                     this.authScreen.style.display = 'flex';
                     this.startScreen.style.display = 'none';
                     this.authMessage.textContent = "Por favor, inicia sesión o introduce un nombre de usuario para jugar.";
-                    // Limpia el mensaje de error después de 3 segundos
                     setTimeout(() => { this.authMessage.textContent = ""; }, 3000);
                     return;
                 }
@@ -1101,7 +1167,18 @@
                 this.score = 0; // Reinicia la puntuación.
                 this.combo = 1; // Reinicia el combo.
                 this.maxCombo = 0; // Reinicia el combo más alto.
-                this.bpm = 120; // Reinicia el ritmo.
+                
+                // Configura la dificultad
+                if (difficulty === 'easy') {
+                    this.bpm = 90;
+                    this.circleLife = 4000; // 4 segundos
+                    this.difficultyIncreaseRate = 2;
+                } else if (difficulty === 'hard') {
+                    this.bpm = 120;
+                    this.circleLife = 3000; // 3 segundos
+                    this.difficultyIncreaseRate = 5;
+                }
+
                 this.beatInterval = 60000 / this.bpm;
                 this.beatCircles = []; // Limpia los círculos.
                 this.particles = []; // Limpia las partículas.
@@ -1288,7 +1365,7 @@
                     y: y,
                     radius: radius,
                     color: color,
-                    life: 3000, // Tiempo que dura el círculo (3 segundos).
+                    life: this.circleLife, // Tiempo que dura el círculo (depende de la dificultad).
                     birthTime: Date.now() // Cuando se creó el círculo.
                 });
                 
@@ -1351,25 +1428,10 @@
                     
                     // Aumenta la dificultad cada 2000 puntos.
                     if (this.score > 0 && this.score % 2000 === 0) {
-                        this.bpm = Math.min(this.bpm + 5, 180); // Sube el BPM (más rápido).
+                        this.bpm = Math.min(this.bpm + this.difficultyIncreaseRate, 180); // Sube el BPM según la dificultad.
                         this.beatInterval = 60000 / this.bpm; // Recalcula el tiempo entre beats.
                     }
                 }
-            }
-            
-            /**
-             * Actualiza la posición y vida de las partículas.
-             */
-            updateParticles() {
-                this.particles = this.particles.filter(particle => {
-                    particle.x += particle.vx; // Mueve la partícula horizontalmente.
-                    particle.y += particle.vy; // Mueve la partícula verticalmente.
-                    particle.life -= particle.decay; // Reduce la vida de la partícula.
-                    particle.vx *= 0.98; // Reduce la velocidad (como si hubiera fricción).
-                    particle.vy *= 0.98;
-                    
-                    return particle.life > 0; // Mantiene la partícula si aún está viva.
-                });
             }
             
             /**
