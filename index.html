@@ -1414,7 +1414,7 @@
                 this.playSound(330, 0.1, 'triangle');
 
                 // --- DEBUG LOG ---
-                console.log('spawnBeatCircle: New circle created. Total circles:', this.beatCircles.length);
+                console.log('spawnBeatCircle: New circle created. Total circles:', this.beatCircles.length, 'at (', x, ',', y, ') with life:', this.circleLife);
             }
             
             /**
@@ -1423,6 +1423,9 @@
             updateBeatCircles() {
                 const now = Date.now();
                 
+                // --- DEBUG LOG ---
+                console.log('updateBeatCircles: Current circles count BEFORE filter:', this.beatCircles.length);
+
                 // Filtra los círculos que ya se acabaron.
                 this.beatCircles = this.beatCircles.filter(circle => {
                     if (now - circle.birthTime > circle.life) {
@@ -1434,6 +1437,8 @@
                     return true; // Mantiene el círculo.
                     }
                 );
+                // --- DEBUG LOG ---
+                console.log('updateBeatCircles: Current circles count AFTER filter:', this.beatCircles.length);
                 
                 // Crea nuevos círculos si ya pasó el tiempo del beat.
                 // --- DEBUG LOG ---
@@ -1465,11 +1470,14 @@
                 // Dibuja los círculos de ritmo.
                 // --- DEBUG LOG ---
                 console.log('Render: Number of circles to draw:', this.beatCircles.length);
-                this.beatCircles.forEach(circle => {
+                this.beatCircles.forEach((circle, index) => {
                     const age = (Date.now() - circle.birthTime) / circle.life; // Edad del círculo (de 0 a 1).
                     const alpha = 1 - age; // Opacidad basada en la edad (se desvanece).
                     const pulseScale = 1 + Math.sin(Date.now() * 0.01) * 0.1; // Escala para el efecto de pulso.
                     
+                    // --- DEBUG LOG ---
+                    console.log(`Render: Drawing circle ${index} at (${circle.x}, ${circle.y}) with radius ${circle.radius}, alpha ${alpha.toFixed(2)}`);
+
                     this.ctx.save(); // Guarda la configuración actual del dibujo.
                     this.ctx.globalAlpha = alpha; // Establece la opacidad.
                     this.ctx.strokeStyle = circle.color; // Color del borde.
@@ -1509,6 +1517,8 @@
              * El bucle principal que hace que el juego funcione.
              */
             animate() {
+                // --- DEBUG LOG ---
+                console.log('Animate loop: gameStarted =', this.gameStarted);
                 if (this.gameStarted) {
                     this.updateBeatCircles(); // Actualiza los círculos.
                     this.updateParticles(); // Actualiza las partículas.
