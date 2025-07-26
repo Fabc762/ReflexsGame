@@ -696,7 +696,7 @@
                 this.setupCanvas();
                 this.setupAudio();
                 this.bindEvents();
-                // Llamada a animate con bind para asegurar el contexto de 'this'
+                // Aseguramos que 'this' siempre se refiera a la instancia de NeonBeats dentro de animate
                 this.animate = this.animate.bind(this); 
                 this.animate(); // Empieza el bucle de animación.
             }
@@ -1056,7 +1056,7 @@
              * Asocia las acciones del usuario (clics, movimiento del ratón) con las funciones del juego.
              */
             bindEvents() {
-                // Cuando haces clic en el botón para entrar al juego (anónimo/confirmar nombre).
+                // Cuando haces clic en el botón para entrar al juego (anónimo).
                 this.enterGameButton.addEventListener('click', () => {
                     this.saveUsername();
                 });
